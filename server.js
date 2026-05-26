@@ -1,13 +1,13 @@
 const express = require('express');
-const fs = require('fs');
 const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const STATE_FILE = path.join(__dirname, 'game-state.json');
 
 app.use(express.json({ limit: '5mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
+
+let gameState = null;
 
 function generateLadder() {
   const numLines = 5;
@@ -44,21 +44,13 @@ function tracePath(state, startCol) {
   return { path: pts, endCol: col };
 }
 
-function loadState() {
-  try {
-    if (fs.existsSync(STATE_FILE)) return JSON.parse(fs.readFileSync(STATE_FILE, 'utf8'));
-  } catch (e) { console.error('State load error:', e.message); }
-  const s = generateLadder();
-  saveState(s);
-  return s;
-}
-
-function saveState(s) {
-  fs.writeFileSync(STATE_FILE, JSON.stringify(s));
+function getState() {
+  if (!gameState) gameState = generateLadder();
+  return gameState;
 }
 
 app.get('/api/state', (req, res) => {
-  const s = loadState();
+  const s = getState();
   res.json({
     bridges: s.bridges,
     selections: s.selections,
@@ -71,21 +63,20 @@ app.get('/api/state', (req, res) => {
 app.post('/api/prize', (req, res) => {
   const { image } = req.body;
   if (!image) return res.status(400).json({ error: '이미지 데이터가 없습니다.' });
-  const s = loadState();
+  const s = getState();
   if (s.selections.length > 0) return res.status(400).json({ error: '이미 게임이 시작되었습니다.' });
   s.prizeImg = image;
-  saveState(s);
   res.json({ success: true });
 });
 
 app.get('/api/prize', (req, res) => {
-  const s = loadState();
+  const s = getState();
   res.json({ image: s.prizeImg });
 });
 
 app.post('/api/select', (req, res) => {
   const { name, position } = req.body;
-  const s = loadState();
+  const s = getState();
   if (!name || name.trim() === '') return res.status(400).json({ error: '이름을 입력해주세요.' });
   if (position === undefined || position < 0 || position >= s.numLines) return res.status(400).json({ error: '올바른 위치를 선택해주세요.' });
   if (s.selections.find(sel => sel.position === position)) return res.status(400).json({ error: '이미 선택된 위치입니다.' });
@@ -95,13 +86,11 @@ app.post('/api/select', (req, res) => {
   const isWinner = endCol === s.winnerIndex;
   const selection = { name: name.trim(), position, endCol, isWinner, path: tracedPath };
   s.selections.push(selection);
-  saveState(s);
   res.json({ selection, selections: s.selections });
 });
 
 app.post('/api/reset', (req, res) => {
-  const s = generateLadder();
-  saveState(s);
+  gameState = generateLadder();
   res.json({ success: true });
 });
 
