@@ -558,17 +558,18 @@ async function selectPosition(name, position) {
     animProgress = 0;
     animStart = performance.now();
 
-    async function tick(now) {
+    function tick(now) {
       animProgress = Math.min((now - animStart) / ANIM_MS, 1);
       draw();
       if (animProgress < 1) { requestAnimationFrame(tick); return; }
       animating = false;
       state.selections = data.selections;
       draw();
-      if (data.selection.isWinner && !prizeImgData) await loadPrize();
-      showSelectionResult(data.selection);
-      updateUI();
       nameInput.value = '';
+      loadPrize().then(() => {
+        showSelectionResult(data.selection);
+        updateUI();
+      });
     }
     requestAnimationFrame(tick);
   } catch { showError('서버 연결 오류'); }
