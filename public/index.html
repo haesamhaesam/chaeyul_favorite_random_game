@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>사다리타기</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap');
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+      background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: rgba(255,255,255,0.97);
+      border-radius: 24px;
+      padding: 32px 28px;
+      box-shadow: 0 25px 80px rgba(0,0,0,0.5);
+      text-align: center;
+      max-width: 720px;
+      width: 100%;
+    }
+
+    h1 {
+      font-size: 34px;
+      font-weight: 900;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 4px;
+    }
+
+    .subtitle { color: #999; font-size: 14px; margin-bottom: 22px; }
+
+    .input-section {
+      margin-bottom: 18px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .input-section label { font-weight: 700; color: #555; font-size: 15px; }
+
+    #nameInput {
+      padding: 10px 16px;
+      border: 2px solid #e0e0e0;
+      border-radius: 12px;
+      font-size: 16px;
+      font-family: inherit;
+      width: 200px;
+      outline: none;
+      transition: border-color 0.3s;
+    }
+    #nameInput:focus { border-color: #667eea; }
+
+    .canvas-wrap { display: flex; justify-content: center; overflow-x: auto; }
+    canvas { cursor: default; display: block; max-width: 100%; height: auto; }
+
+    .info-bar {
+      margin-top: 14px;
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      min-height: 24px;
+    }
+
+    .player-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 5px 14px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .result-banner {
+      margin-top: 18px;
+      padding: 20px;
+      border-radius: 16px;
+      font-size: 22px;
+      font-weight: 900;
+      display: none;
+      animation: pop .5s ease;
+    }
+    .result-banner.win {
+      display: block;
+      background: linear-gradient(135deg, #f6d365, #fda085);
+      color: #5a3e00;
+    }
+    .result-banner.lose {
+      display: block;
+      background: #f0f0f0;
+      color: #999;
+    }
+    .result-banner.summary {
+      display: block;
+      background: linear-gradient(135deg, #a18cd1, #fbc2eb);
+      color: #3d1e6d;
+      font-size: 16px;
+      line-height: 1.8;
+    }
+
+    @keyframes pop {
+      0%   { transform: scale(0.85); opacity: 0; }
+      60%  { transform: scale(1.04); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    .btn-group { margin-top: 18px; display: flex; justify-content: center; gap: 10px; }
+
+    .btn {
+      padding: 11px 26px;
+      border: none;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all .25s;
+    }
+    .btn:hover { transform: translateY(-2px); }
+
+    .btn-refresh {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: #fff;
+    }
+    .btn-refresh:hover { box-shadow: 0 6px 20px rgba(102,126,234,.4); }
+
+    .btn-reset {
+      background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+      color: #fff;
+    }
+    .btn-reset:hover { box-shadow: 0 6px 20px rgba(255,107,107,.4); }
+
+    .status { margin-top: 10px; color: #aaa; font-size: 13px; }
+    .error-msg { color: #e74c3c; margin-top: 8px; font-size: 14px; font-weight: 700; min-height: 20px; }
+
+    .prize-section {
+      margin-bottom: 18px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .prize-label { font-weight: 700; color: #555; font-size: 14px; }
+    .prize-btn {
+      padding: 7px 14px;
+      border: 2px dashed #ccc;
+      border-radius: 10px;
+      background: #fafafa;
+      font-family: inherit;
+      font-size: 13px;
+      color: #888;
+      cursor: pointer;
+      transition: all .25s;
+    }
+    .prize-btn:hover { border-color: #667eea; color: #667eea; }
+    .prize-done { font-size: 13px; font-weight: 700; color: #27ae60; }
+
+    .result-img {
+      display: block;
+      max-width: 220px;
+      max-height: 220px;
+      border-radius: 16px;
+      margin: 14px auto 0;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+      cursor: pointer;
+      transition: transform .2s;
+    }
+    .result-img:hover { transform: scale(1.05); }
+
+    .viewer-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      animation: fadeIn .25s ease;
+    }
+    .viewer-overlay.open { display: flex; }
+    .viewer-overlay img {
+      max-width: 90vw;
+      max-height: 90vh;
+      border-radius: 12px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+      cursor: default;
+    }
+    .viewer-close {
+      position: fixed;
+      top: 20px;
+      right: 28px;
+      color: #fff;
+      font-size: 36px;
+      font-weight: 700;
+      cursor: pointer;
+      z-index: 1001;
+      line-height: 1;
+    }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>사다리타기</h1>
+  <p class="subtitle">이름을 입력하고 위쪽 번호를 클릭하세요!</p>
+
+  <div class="prize-section" id="prizeSection" style="display:none">
+    <span class="prize-label">당첨 이미지</span>
+    <button class="prize-btn" id="prizeBtn" onclick="document.getElementById('prizeFile').click()">📷 이미지 선택</button>
+    <input type="file" id="prizeFile" accept="image/*" style="display:none" onchange="handlePrizeUpload(this)">
+    <span class="prize-done" id="prizeDone" style="display:none">✓ 등록완료</span>
+  </div>
+
+  <div class="input-section">
+    <label for="nameInput">이름</label>
+    <input type="text" id="nameInput" placeholder="이름 입력" maxlength="10">
+  </div>
+
+  <div class="canvas-wrap">
+    <canvas id="ladder" width="640" height="520"></canvas>
+  </div>
+
+  <div class="info-bar" id="infoBar"></div>
+  <div class="error-msg" id="errorMsg"></div>
+  <div class="result-banner" id="resultBanner"></div>
+  <p class="status" id="status"></p>
+
+  <div class="btn-group">
+    <button class="btn btn-refresh" onclick="refreshState()">새로고침</button>
+    <button class="btn btn-reset" onclick="resetGame()">새 게임</button>
+  </div>
+</div>
+
+<div class="viewer-overlay" id="viewer" onclick="closeViewer()">
+  <span class="viewer-close">&times;</span>
+  <img id="viewerImg" src="" onclick="event.stopPropagation()">
+</div>
+
+<script>
+const canvas = document.getElementById('ladder');
+const ctx = canvas.getContext('2d');
+const nameInput = document.getElementById('nameInput');
+const infoBar = document.getElementById('infoBar');
+const resultBanner = document.getElementById('resultBanner');
+const errorEl = document.getElementById('errorMsg');
+const statusEl = document.getElementById('status');
+
+const LINE_X = [80, 200, 320, 440, 560];
+const LADDER_TOP = 75;
+const LADDER_BOTTOM = 435;
+const CIRCLE_Y = 38;
+const CIRCLE_R = 27;
+const RESULT_Y = 478;
+const NUM_LINES = 5;
+const NUM_ROWS = 8;
+const COLORS = ['#FF6B6B','#4ECDC4','#45B7D1','#F39C12','#9B59B6'];
+const ANIM_MS = 2200;
+
+let state = null;
+let hoverCol = -1;
+let animating = false;
+let animPath = null;
+let animProgress = 0;
+let animResult = null;
+let animStart = 0;
+let prizeImgData = null;
+
+/* ── prize image ── */
+
+async function handlePrizeUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async function(e) {
+    try {
+      const res = await fetch('/api/prize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: e.target.result })
+      });
+      const data = await res.json();
+      if (!res.ok) { showError(data.error); return; }
+      prizeImgData = e.target.result;
+      updatePrizeSection();
+    } catch { showError('이미지 업로드 실패'); }
+  };
+  reader.readAsDataURL(file);
+  input.value = '';
+}
+
+async function loadPrize() {
+  try {
+    const res = await fetch('/api/prize');
+    const data = await res.json();
+    prizeImgData = data.image || null;
+  } catch { prizeImgData = null; }
+}
+
+function updatePrizeSection() {
+  const section = document.getElementById('prizeSection');
+  const btn = document.getElementById('prizeBtn');
+  const done = document.getElementById('prizeDone');
+  if (!state || state.selections.length > 0) {
+    section.style.display = 'none';
+  } else {
+    section.style.display = '';
+    btn.style.display = prizeImgData ? 'none' : '';
+    done.style.display = prizeImgData ? '' : 'none';
+  }
+}
+
+/* ── drawing helpers ── */
+
+function rowY(row) {
+  if (row === -1) return CIRCLE_Y;
+  if (row >= NUM_ROWS) return RESULT_Y;
+  return LADDER_TOP + (row + 1) * (LADDER_BOTTOM - LADDER_TOP) / (NUM_ROWS + 1);
+}
+
+function toXY(pt) { return { x: LINE_X[pt.col], y: rowY(pt.row) }; }
+
+function rrect(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+/* ── draw ── */
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (!state) return;
+  drawLadder();
+  drawPrevPaths();
+  if (animating) drawAnim();
+  drawCircles();
+  drawResults();
+}
+
+function drawLadder() {
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = '#ddd';
+  ctx.lineWidth = 3;
+  LINE_X.forEach(x => { ctx.beginPath(); ctx.moveTo(x, LADDER_TOP); ctx.lineTo(x, LADDER_BOTTOM); ctx.stroke(); });
+
+  ctx.strokeStyle = '#bbb';
+  ctx.lineWidth = 3;
+  state.bridges.forEach((row, ri) => {
+    const y = rowY(ri);
+    row.forEach((has, ci) => {
+      if (!has) return;
+      ctx.beginPath(); ctx.moveTo(LINE_X[ci], y); ctx.lineTo(LINE_X[ci + 1], y); ctx.stroke();
+    });
+  });
+}
+
+function drawPrevPaths() {
+  state.selections.forEach((sel, i) => {
+    if (animating && animResult && sel.position === animResult.position) return;
+    const pts = sel.path.map(toXY);
+    ctx.strokeStyle = COLORS[i % COLORS.length];
+    ctx.lineWidth = 4;
+    ctx.globalAlpha = 0.45;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    pts.forEach((p, j) => j === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  });
+}
+
+function drawAnim() {
+  const pts = animPath.map(toXY);
+  let total = 0;
+  const segs = [];
+  for (let i = 1; i < pts.length; i++) {
+    const dx = pts[i].x - pts[i-1].x, dy = pts[i].y - pts[i-1].y;
+    const l = Math.sqrt(dx*dx + dy*dy);
+    segs.push(l); total += l;
+  }
+  const drawn = animProgress * total;
+  let acc = 0, dotX = pts[0].x, dotY = pts[0].y;
+
+  ctx.save();
+  ctx.strokeStyle = '#FF4757'; ctx.lineWidth = 5;
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.shadowColor = '#FF4757'; ctx.shadowBlur = 12;
+  ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
+
+  for (let i = 0; i < segs.length; i++) {
+    acc += segs[i];
+    if (acc <= drawn) {
+      ctx.lineTo(pts[i+1].x, pts[i+1].y);
+      dotX = pts[i+1].x; dotY = pts[i+1].y;
+    } else {
+      const t = (drawn - (acc - segs[i])) / segs[i];
+      dotX = pts[i].x + (pts[i+1].x - pts[i].x) * t;
+      dotY = pts[i].y + (pts[i+1].y - pts[i].y) * t;
+      ctx.lineTo(dotX, dotY);
+      break;
+    }
+  }
+  ctx.stroke(); ctx.restore();
+
+  ctx.save();
+  ctx.fillStyle = '#FF4757'; ctx.shadowColor = '#FF4757'; ctx.shadowBlur = 18;
+  ctx.beginPath(); ctx.arc(dotX, dotY, 8, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
+function drawCircles() {
+  const taken = {};
+  state.selections.forEach(s => { taken[s.position] = s; });
+
+  for (let i = 0; i < 5; i++) {
+    const x = LINE_X[i], y = CIRCLE_Y, sel = taken[i];
+    if (sel) {
+      const ci = state.selections.indexOf(sel);
+      ctx.fillStyle = COLORS[ci % COLORS.length];
+      ctx.beginPath(); ctx.arc(x, y, CIRCLE_R, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 13px "Noto Sans KR", sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(sel.name.length > 4 ? sel.name.slice(0,4)+'..' : sel.name, x, y);
+    } else {
+      const hover = hoverCol === i && !animating;
+      const r = hover ? CIRCLE_R + 4 : CIRCLE_R;
+      ctx.save();
+      if (hover) { ctx.shadowColor = '#667eea'; ctx.shadowBlur = 16; }
+      const g = ctx.createLinearGradient(x - r, y - r, x + r, y + r);
+      g.addColorStop(0, '#667eea'); g.addColorStop(1, '#764ba2');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 18px "Noto Sans KR", sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(i + 1, x, y);
+    }
+  }
+}
+
+function drawResults() {
+  const revealed = {};
+  state.selections.forEach(s => { revealed[s.endCol] = s.isWinner; });
+
+  for (let i = 0; i < 5; i++) {
+    const x = LINE_X[i], y = RESULT_Y, w = 64, h = 34, r = 10;
+    if (revealed[i] !== undefined) {
+      const win = revealed[i];
+      ctx.save();
+      if (win) { ctx.shadowColor = '#FFD700'; ctx.shadowBlur = 16; }
+      ctx.fillStyle = win ? '#FFD700' : '#e8e8e8';
+      rrect(x - w/2, y - h/2, w, h, r); ctx.fill();
+      ctx.restore();
+      ctx.fillStyle = win ? '#7a5c00' : '#999';
+      ctx.font = `bold ${win ? 16 : 14}px "Noto Sans KR", sans-serif`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(win ? '당첨!' : '꽝', x, y);
+    } else {
+      ctx.fillStyle = '#f0f0f0';
+      rrect(x - w/2, y - h/2, w, h, r); ctx.fill();
+      ctx.fillStyle = '#ccc';
+      ctx.font = 'bold 20px sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('?', x, y);
+    }
+  }
+}
+
+/* ── interaction ── */
+
+function canvasCoords(e) {
+  const rect = canvas.getBoundingClientRect();
+  const sx = canvas.width / rect.width, sy = canvas.height / rect.height;
+  const src = e.touches ? e.touches[0] : e;
+  return { x: (src.clientX - rect.left) * sx, y: (src.clientY - rect.top) * sy };
+}
+
+function hitTest(mx, my) {
+  if (animating || !state) return -1;
+  const taken = {};
+  state.selections.forEach(s => { taken[s.position] = true; });
+  for (let i = 0; i < 5; i++) {
+    if (taken[i]) continue;
+    const dx = mx - LINE_X[i], dy = my - CIRCLE_Y;
+    if (dx*dx + dy*dy <= (CIRCLE_R + 8) * (CIRCLE_R + 8)) return i;
+  }
+  return -1;
+}
+
+canvas.addEventListener('mousemove', e => {
+  const { x, y } = canvasCoords(e);
+  hoverCol = hitTest(x, y);
+  canvas.style.cursor = hoverCol >= 0 ? 'pointer' : 'default';
+  draw();
+});
+
+canvas.addEventListener('mouseleave', () => { hoverCol = -1; draw(); });
+
+canvas.addEventListener('click', e => {
+  const { x, y } = canvasCoords(e);
+  const col = hitTest(x, y);
+  if (col < 0) return;
+  trySelect(col);
+});
+
+canvas.addEventListener('touchstart', e => {
+  e.preventDefault();
+  const { x, y } = canvasCoords(e);
+  const col = hitTest(x, y);
+  if (col < 0) return;
+  trySelect(col);
+}, { passive: false });
+
+function trySelect(col) {
+  const name = nameInput.value.trim();
+  if (!name) { showError('이름을 먼저 입력해주세요!'); nameInput.focus(); return; }
+  if (state.selections.length >= NUM_LINES) { showError('모든 자리가 선택되었습니다.'); return; }
+  selectPosition(name, col);
+}
+
+async function selectPosition(name, position) {
+  errorEl.textContent = '';
+  try {
+    const res = await fetch('/api/select', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, position })
+    });
+    const data = await res.json();
+    if (!res.ok) { showError(data.error); return; }
+
+    animating = true;
+    animPath = data.selection.path;
+    animResult = data.selection;
+    animProgress = 0;
+    animStart = performance.now();
+
+    function tick(now) {
+      animProgress = Math.min((now - animStart) / ANIM_MS, 1);
+      draw();
+      if (animProgress < 1) { requestAnimationFrame(tick); return; }
+      animating = false;
+      state.selections = data.selections;
+      draw();
+      showSelectionResult(data.selection);
+      updateUI();
+      nameInput.value = '';
+    }
+    requestAnimationFrame(tick);
+  } catch { showError('서버 연결 오류'); }
+}
+
+/* ── ui ── */
+
+function prizeImgTag() {
+  if (!prizeImgData) return '';
+  return `<img src="${prizeImgData}" class="result-img" alt="당첨 이미지" onclick="openViewer()">`;
+}
+
+function openViewer() {
+  if (!prizeImgData) return;
+  document.getElementById('viewerImg').src = prizeImgData;
+  document.getElementById('viewer').classList.add('open');
+}
+
+function closeViewer() {
+  document.getElementById('viewer').classList.remove('open');
+}
+
+function showSelectionResult(sel) {
+  if (sel.isWinner) {
+    resultBanner.className = 'result-banner win';
+    resultBanner.innerHTML = `🎉 <b>${esc(sel.name)}</b>님 당첨! 축하합니다! 🎉${prizeImgTag()}`;
+  } else {
+    resultBanner.className = 'result-banner lose';
+    resultBanner.innerHTML = `😅 <b>${esc(sel.name)}</b>님 꽝! 다음 기회에~`;
+  }
+
+  if (state.selections.length >= NUM_LINES) {
+    const lines = state.selections.map((s, i) =>
+      `<span style="color:${COLORS[i]}">${esc(s.name)}</span> → ${s.position+1}번 → ${s.isWinner ? '<b>🏆 당첨!</b>' : '꽝'}`
+    ).join('<br>');
+    resultBanner.className = 'result-banner summary';
+    resultBanner.innerHTML = `<div style="margin-bottom:8px;font-size:20px;font-weight:900">🎊 게임 종료! 🎊</div>${lines}${prizeImgTag()}`;
+  }
+}
+
+function updateUI() {
+  const sels = state.selections;
+  infoBar.innerHTML = sels.map((s, i) => {
+    const icon = s.isWinner ? ' ⭐' : '';
+    return `<span class="player-tag" style="background:${COLORS[i]}">${esc(s.name)} → ${s.position+1}번${icon}</span>`;
+  }).join('');
+  statusEl.textContent = `${sels.length} / 5 명 참여`;
+  updatePrizeSection();
+}
+
+function showError(msg) {
+  errorEl.textContent = msg;
+  setTimeout(() => { if (errorEl.textContent === msg) errorEl.textContent = ''; }, 3000);
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+async function refreshState() {
+  try {
+    const res = await fetch('/api/state');
+    state = await res.json();
+    await loadPrize();
+    resultBanner.style.display = 'none';
+    resultBanner.className = 'result-banner';
+    errorEl.textContent = '';
+    draw();
+    updateUI();
+  } catch { showError('서버 연결 오류'); }
+}
+
+async function resetGame() {
+  if (state.selections.length > 0 && !confirm('새 게임을 시작하시겠습니까?\n현재 진행 상황이 초기화됩니다.')) return;
+  try {
+    await fetch('/api/reset', { method: 'POST' });
+    prizeImgData = null;
+    await refreshState();
+    nameInput.value = '';
+  } catch { showError('서버 연결 오류'); }
+}
+
+/* ── init ── */
+refreshState();
+</script>
+</body>
+</html>
