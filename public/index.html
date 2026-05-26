@@ -565,11 +565,10 @@ async function selectPosition(name, position) {
       animating = false;
       state.selections = data.selections;
       draw();
+      if (data.prizeImg) prizeImgData = data.prizeImg;
+      showSelectionResult(data.selection);
+      updateUI();
       nameInput.value = '';
-      loadPrize().then(() => {
-        showSelectionResult(data.selection);
-        updateUI();
-      });
     }
     requestAnimationFrame(tick);
   } catch { showError('서버 연결 오류'); }
