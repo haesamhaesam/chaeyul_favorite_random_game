@@ -179,25 +179,30 @@
     }
     .prize-done { font-size: 13px; font-weight: 700; color: #27ae60; }
 
-    .result-link {
+    #prizeLinkBox {
+      display: none;
+      margin-top: 16px;
+      text-align: center;
+      animation: pop .5s ease;
+    }
+    #prizeLinkBox a {
       display: inline-block;
-      margin-top: 12px;
-      padding: 10px 20px;
+      padding: 14px 28px;
       background: linear-gradient(135deg, #667eea, #764ba2);
       color: #fff;
-      border-radius: 12px;
+      border-radius: 14px;
       text-decoration: none;
-      font-size: 15px;
-      font-weight: 700;
-      transition: transform .2s;
+      font-size: 17px;
+      font-weight: 900;
+      box-shadow: 0 4px 15px rgba(102,126,234,.4);
     }
-    .result-link:hover { transform: scale(1.05); }
+    #prizeLinkBox a:hover { transform: scale(1.05); }
   </style>
 </head>
 <body>
 <div class="container">
   <h1>사다리타기</h1>
-  <p class="subtitle">이름을 입력하고 위쪽 번호를 클릭하세요! <span style="color:#ddd;font-size:11px">v3</span></p>
+  <p class="subtitle">이름을 입력하고 위쪽 번호를 클릭하세요! <span style="color:#ddd;font-size:11px">v4</span></p>
 
   <div class="prize-section" id="prizeSection" style="display:none">
     <span class="prize-label">당첨 링크</span>
@@ -218,6 +223,11 @@
   <div class="info-bar" id="infoBar"></div>
   <div class="error-msg" id="errorMsg"></div>
   <div class="result-banner" id="resultBanner"></div>
+
+  <div id="prizeLinkBox">
+    <a id="prizeLinkA" href="" target="_blank">🎁 당첨 이미지 보기</a>
+  </div>
+
   <p class="status" id="status"></p>
 
   <div class="btn-group">
@@ -228,58 +238,59 @@
 
 
 <script>
-const canvas = document.getElementById('ladder');
-const ctx = canvas.getContext('2d');
-const nameInput = document.getElementById('nameInput');
-const infoBar = document.getElementById('infoBar');
-const resultBanner = document.getElementById('resultBanner');
-const errorEl = document.getElementById('errorMsg');
-const statusEl = document.getElementById('status');
+var canvas = document.getElementById('ladder');
+var ctx = canvas.getContext('2d');
+var nameInput = document.getElementById('nameInput');
+var infoBar = document.getElementById('infoBar');
+var resultBanner = document.getElementById('resultBanner');
+var errorEl = document.getElementById('errorMsg');
+var statusEl = document.getElementById('status');
+var prizeLinkBox = document.getElementById('prizeLinkBox');
+var prizeLinkA = document.getElementById('prizeLinkA');
 
-const LINE_X = [80, 200, 320, 440, 560];
-const LADDER_TOP = 75;
-const LADDER_BOTTOM = 435;
-const CIRCLE_Y = 38;
-const CIRCLE_R = 27;
-const RESULT_Y = 478;
-const NUM_LINES = 5;
-const NUM_ROWS = 8;
-const COLORS = ['#FF6B6B','#4ECDC4','#45B7D1','#F39C12','#9B59B6'];
-const ANIM_MS = 2200;
+var LINE_X = [80, 200, 320, 440, 560];
+var LADDER_TOP = 75;
+var LADDER_BOTTOM = 435;
+var CIRCLE_Y = 38;
+var CIRCLE_R = 27;
+var RESULT_Y = 478;
+var NUM_LINES = 5;
+var NUM_ROWS = 8;
+var COLORS = ['#FF6B6B','#4ECDC4','#45B7D1','#F39C12','#9B59B6'];
+var ANIM_MS = 2200;
 
-let state = null;
-let hoverCol = -1;
-let animating = false;
-let animPath = null;
-let animProgress = 0;
-let animResult = null;
-let animStart = 0;
-let prizeUrl = null;
+var state = null;
+var hoverCol = -1;
+var animating = false;
+var animPath = null;
+var animProgress = 0;
+var animResult = null;
+var animStart = 0;
+var prizeUrl = null;
 
-/* ── prize url ── */
-
-async function submitPrizeUrl() {
-  const input = document.getElementById('prizeInput');
-  const url = input.value.trim();
+function submitPrizeUrl() {
+  var input = document.getElementById('prizeInput');
+  var url = input.value.trim();
   if (!url) { showError('URL을 입력해주세요!'); return; }
-  try {
-    const res = await fetch('/api/prize', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url })
-    });
-    const data = await res.json();
-    if (!res.ok) { showError(data.error); return; }
+  fetch('/api/prize', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url: url })
+  })
+  .then(function(res) { return res.json(); })
+  .then(function(data) {
+    if (data.error) { showError(data.error); return; }
     prizeUrl = url;
     updatePrizeSection();
-  } catch { showError('등록 실패'); }
+  })
+  .catch(function() { showError('등록 실패'); });
 }
 
 function updatePrizeSection() {
-  const section = document.getElementById('prizeSection');
-  const input = document.getElementById('prizeInput');
-  const btn = document.getElementById('prizeSubmitBtn');
-  const done = document.getElementById('prizeDone');
+  var section = document.getElementById('prizeSection');
+  var input = document.getElementById('prizeInput');
+  var btn = document.getElementById('prizeSubmitBtn');
+  var done = document.getElementById('prizeDone');
   if (!state || state.selections.length > 0) {
     section.style.display = 'none';
   } else {
@@ -289,8 +300,6 @@ function updatePrizeSection() {
     done.style.display = prizeUrl ? '' : 'none';
   }
 }
-
-/* ── drawing helpers ── */
 
 function rowY(row) {
   if (row === -1) return CIRCLE_Y;
@@ -310,8 +319,6 @@ function rrect(x, y, w, h, r) {
   ctx.closePath();
 }
 
-/* ── draw ── */
-
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   if (!state) return;
@@ -326,13 +333,12 @@ function drawLadder() {
   ctx.lineCap = 'round';
   ctx.strokeStyle = '#ddd';
   ctx.lineWidth = 3;
-  LINE_X.forEach(x => { ctx.beginPath(); ctx.moveTo(x, LADDER_TOP); ctx.lineTo(x, LADDER_BOTTOM); ctx.stroke(); });
-
+  LINE_X.forEach(function(x) { ctx.beginPath(); ctx.moveTo(x, LADDER_TOP); ctx.lineTo(x, LADDER_BOTTOM); ctx.stroke(); });
   ctx.strokeStyle = '#bbb';
   ctx.lineWidth = 3;
-  state.bridges.forEach((row, ri) => {
-    const y = rowY(ri);
-    row.forEach((has, ci) => {
+  state.bridges.forEach(function(row, ri) {
+    var y = rowY(ri);
+    row.forEach(function(has, ci) {
       if (!has) return;
       ctx.beginPath(); ctx.moveTo(LINE_X[ci], y); ctx.lineTo(LINE_X[ci + 1], y); ctx.stroke();
     });
@@ -340,32 +346,32 @@ function drawLadder() {
 }
 
 function drawPrevPaths() {
-  state.selections.forEach((sel, i) => {
+  state.selections.forEach(function(sel, i) {
     if (animating && animResult && sel.position === animResult.position) return;
-    const pts = sel.path.map(toXY);
+    var pts = sel.path.map(toXY);
     ctx.strokeStyle = COLORS[i % COLORS.length];
     ctx.lineWidth = 4;
     ctx.globalAlpha = 0.45;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     ctx.beginPath();
-    pts.forEach((p, j) => j === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
+    pts.forEach(function(p, j) { j === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y); });
     ctx.stroke();
     ctx.globalAlpha = 1;
   });
 }
 
 function drawAnim() {
-  const pts = animPath.map(toXY);
-  let total = 0;
-  const segs = [];
-  for (let i = 1; i < pts.length; i++) {
-    const dx = pts[i].x - pts[i-1].x, dy = pts[i].y - pts[i-1].y;
-    const l = Math.sqrt(dx*dx + dy*dy);
+  var pts = animPath.map(toXY);
+  var total = 0;
+  var segs = [];
+  for (var i = 1; i < pts.length; i++) {
+    var dx = pts[i].x - pts[i-1].x, dy = pts[i].y - pts[i-1].y;
+    var l = Math.sqrt(dx*dx + dy*dy);
     segs.push(l); total += l;
   }
-  const drawn = animProgress * total;
-  let acc = 0, dotX = pts[0].x, dotY = pts[0].y;
+  var drawn = animProgress * total;
+  var acc = 0, dotX = pts[0].x, dotY = pts[0].y;
 
   ctx.save();
   ctx.strokeStyle = '#FF4757'; ctx.lineWidth = 5;
@@ -373,13 +379,13 @@ function drawAnim() {
   ctx.shadowColor = '#FF4757'; ctx.shadowBlur = 12;
   ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
 
-  for (let i = 0; i < segs.length; i++) {
+  for (var i = 0; i < segs.length; i++) {
     acc += segs[i];
     if (acc <= drawn) {
       ctx.lineTo(pts[i+1].x, pts[i+1].y);
       dotX = pts[i+1].x; dotY = pts[i+1].y;
     } else {
-      const t = (drawn - (acc - segs[i])) / segs[i];
+      var t = (drawn - (acc - segs[i])) / segs[i];
       dotX = pts[i].x + (pts[i+1].x - pts[i].x) * t;
       dotY = pts[i].y + (pts[i+1].y - pts[i].y) * t;
       ctx.lineTo(dotX, dotY);
@@ -395,13 +401,13 @@ function drawAnim() {
 }
 
 function drawCircles() {
-  const taken = {};
-  state.selections.forEach(s => { taken[s.position] = s; });
+  var taken = {};
+  state.selections.forEach(function(s) { taken[s.position] = s; });
 
-  for (let i = 0; i < 5; i++) {
-    const x = LINE_X[i], y = CIRCLE_Y, sel = taken[i];
+  for (var i = 0; i < 5; i++) {
+    var x = LINE_X[i], y = CIRCLE_Y, sel = taken[i];
     if (sel) {
-      const ci = state.selections.indexOf(sel);
+      var ci = state.selections.indexOf(sel);
       ctx.fillStyle = COLORS[ci % COLORS.length];
       ctx.beginPath(); ctx.arc(x, y, CIRCLE_R, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#fff';
@@ -409,11 +415,11 @@ function drawCircles() {
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText(sel.name.length > 4 ? sel.name.slice(0,4)+'..' : sel.name, x, y);
     } else {
-      const hover = hoverCol === i && !animating;
-      const r = hover ? CIRCLE_R + 4 : CIRCLE_R;
+      var hover = hoverCol === i && !animating;
+      var r = hover ? CIRCLE_R + 4 : CIRCLE_R;
       ctx.save();
       if (hover) { ctx.shadowColor = '#667eea'; ctx.shadowBlur = 16; }
-      const g = ctx.createLinearGradient(x - r, y - r, x + r, y + r);
+      var g = ctx.createLinearGradient(x - r, y - r, x + r, y + r);
       g.addColorStop(0, '#667eea'); g.addColorStop(1, '#764ba2');
       ctx.fillStyle = g;
       ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
@@ -427,20 +433,20 @@ function drawCircles() {
 }
 
 function drawResults() {
-  const revealed = {};
-  state.selections.forEach(s => { revealed[s.endCol] = s.isWinner; });
+  var revealed = {};
+  state.selections.forEach(function(s) { revealed[s.endCol] = s.isWinner; });
 
-  for (let i = 0; i < 5; i++) {
-    const x = LINE_X[i], y = RESULT_Y, w = 64, h = 34, r = 10;
+  for (var i = 0; i < 5; i++) {
+    var x = LINE_X[i], y = RESULT_Y, w = 64, h = 34, r = 10;
     if (revealed[i] !== undefined) {
-      const win = revealed[i];
+      var win = revealed[i];
       ctx.save();
       if (win) { ctx.shadowColor = '#FFD700'; ctx.shadowBlur = 16; }
       ctx.fillStyle = win ? '#FFD700' : '#e8e8e8';
       rrect(x - w/2, y - h/2, w, h, r); ctx.fill();
       ctx.restore();
       ctx.fillStyle = win ? '#7a5c00' : '#999';
-      ctx.font = `bold ${win ? 16 : 14}px "Noto Sans KR", sans-serif`;
+      ctx.font = 'bold ' + (win ? 16 : 14) + 'px "Noto Sans KR", sans-serif';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText(win ? '당첨!' : '꽝', x, y);
     } else {
@@ -454,68 +460,68 @@ function drawResults() {
   }
 }
 
-/* ── interaction ── */
-
 function canvasCoords(e) {
-  const rect = canvas.getBoundingClientRect();
-  const sx = canvas.width / rect.width, sy = canvas.height / rect.height;
-  const src = e.touches ? e.touches[0] : e;
+  var rect = canvas.getBoundingClientRect();
+  var sx = canvas.width / rect.width, sy = canvas.height / rect.height;
+  var src = e.touches ? e.touches[0] : e;
   return { x: (src.clientX - rect.left) * sx, y: (src.clientY - rect.top) * sy };
 }
 
 function hitTest(mx, my) {
   if (animating || !state) return -1;
-  const taken = {};
-  state.selections.forEach(s => { taken[s.position] = true; });
-  for (let i = 0; i < 5; i++) {
+  var taken = {};
+  state.selections.forEach(function(s) { taken[s.position] = true; });
+  for (var i = 0; i < 5; i++) {
     if (taken[i]) continue;
-    const dx = mx - LINE_X[i], dy = my - CIRCLE_Y;
+    var dx = mx - LINE_X[i], dy = my - CIRCLE_Y;
     if (dx*dx + dy*dy <= (CIRCLE_R + 8) * (CIRCLE_R + 8)) return i;
   }
   return -1;
 }
 
-canvas.addEventListener('mousemove', e => {
-  const { x, y } = canvasCoords(e);
-  hoverCol = hitTest(x, y);
+canvas.addEventListener('mousemove', function(e) {
+  var c = canvasCoords(e);
+  hoverCol = hitTest(c.x, c.y);
   canvas.style.cursor = hoverCol >= 0 ? 'pointer' : 'default';
   draw();
 });
 
-canvas.addEventListener('mouseleave', () => { hoverCol = -1; draw(); });
+canvas.addEventListener('mouseleave', function() { hoverCol = -1; draw(); });
 
-canvas.addEventListener('click', e => {
-  const { x, y } = canvasCoords(e);
-  const col = hitTest(x, y);
+canvas.addEventListener('click', function(e) {
+  var c = canvasCoords(e);
+  var col = hitTest(c.x, c.y);
   if (col < 0) return;
   trySelect(col);
 });
 
-canvas.addEventListener('touchstart', e => {
+canvas.addEventListener('touchstart', function(e) {
   e.preventDefault();
-  const { x, y } = canvasCoords(e);
-  const col = hitTest(x, y);
+  var c = canvasCoords(e);
+  var col = hitTest(c.x, c.y);
   if (col < 0) return;
   trySelect(col);
 }, { passive: false });
 
 function trySelect(col) {
-  const name = nameInput.value.trim();
+  var name = nameInput.value.trim();
   if (!name) { showError('이름을 먼저 입력해주세요!'); nameInput.focus(); return; }
   if (state.selections.length >= NUM_LINES) { showError('모든 자리가 선택되었습니다.'); return; }
   selectPosition(name, col);
 }
 
-async function selectPosition(name, position) {
+function selectPosition(name, position) {
   errorEl.textContent = '';
-  try {
-    const res = await fetch('/api/select', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, position })
-    });
-    const data = await res.json();
-    if (!res.ok) { showError(data.error); return; }
+  fetch('/api/select', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: name, position: position })
+  })
+  .then(function(res) { return res.json(); })
+  .then(function(data) {
+    if (data.error) { showError(data.error); return; }
+
+    var gotPrizeUrl = data.prizeUrl || null;
 
     animating = true;
     animPath = data.selection.path;
@@ -523,87 +529,97 @@ async function selectPosition(name, position) {
     animProgress = 0;
     animStart = performance.now();
 
-    const winPrizeUrl = data.prizeUrl || null;
-    if (winPrizeUrl) prizeUrl = winPrizeUrl;
-
     function tick(now) {
       animProgress = Math.min((now - animStart) / ANIM_MS, 1);
       draw();
       if (animProgress < 1) { requestAnimationFrame(tick); return; }
+
       animating = false;
       state.selections = data.selections;
       draw();
-      showSelectionResult(data.selection, winPrizeUrl);
+
+      // 결과 배너 표시
+      if (data.selection.isWinner) {
+        resultBanner.className = 'result-banner win';
+        resultBanner.innerHTML = '🎉 <b>' + esc(data.selection.name) + '</b>님 당첨! 축하합니다! 🎉';
+      } else {
+        resultBanner.className = 'result-banner lose';
+        resultBanner.innerHTML = '😅 <b>' + esc(data.selection.name) + '</b>님 꽝! 다음 기회에~';
+      }
+
+      // 5명 다 끝나면 요약
+      if (state.selections.length >= NUM_LINES) {
+        var lines = '';
+        for (var i = 0; i < state.selections.length; i++) {
+          var s = state.selections[i];
+          lines += '<span style="color:' + COLORS[i] + '">' + esc(s.name) + '</span> → ' + (s.position+1) + '번 → ' + (s.isWinner ? '<b>🏆 당첨!</b>' : '꽝') + '<br>';
+        }
+        resultBanner.className = 'result-banner summary';
+        resultBanner.innerHTML = '<div style="margin-bottom:8px;font-size:20px;font-weight:900">🎊 게임 종료! 🎊</div>' + lines;
+      }
+
+      // 당첨자한테만 링크 보여주기 (별도 div)
+      if (data.selection.isWinner && gotPrizeUrl) {
+        prizeLinkA.href = gotPrizeUrl;
+        prizeLinkBox.style.display = 'block';
+      }
+
       updateUI();
       nameInput.value = '';
     }
     requestAnimationFrame(tick);
-  } catch { showError('서버 연결 오류'); }
-}
-
-/* ── ui ── */
-
-function showSelectionResult(sel, url) {
-  const link = (sel.isWinner && url) ? '<br><a href="' + esc(url) + '" target="_blank" class="result-link">🎁 당첨 이미지 보기</a>' : '';
-
-  if (sel.isWinner) {
-    resultBanner.className = 'result-banner win';
-    resultBanner.innerHTML = '🎉 <b>' + esc(sel.name) + '</b>님 당첨! 축하합니다! 🎉' + link;
-  } else {
-    resultBanner.className = 'result-banner lose';
-    resultBanner.innerHTML = '😅 <b>' + esc(sel.name) + '</b>님 꽝! 다음 기회에~';
-  }
-
-  if (state.selections.length >= NUM_LINES) {
-    const lines = state.selections.map((s, i) =>
-      '<span style="color:' + COLORS[i] + '">' + esc(s.name) + '</span> → ' + (s.position+1) + '번 → ' + (s.isWinner ? '<b>🏆 당첨!</b>' : '꽝')
-    ).join('<br>');
-    resultBanner.className = 'result-banner summary';
-    resultBanner.innerHTML = '<div style="margin-bottom:8px;font-size:20px;font-weight:900">🎊 게임 종료! 🎊</div>' + lines + link;
-  }
+  })
+  .catch(function() { showError('서버 연결 오류'); });
 }
 
 function updateUI() {
-  const sels = state.selections;
-  infoBar.innerHTML = sels.map((s, i) => {
-    const icon = s.isWinner ? ' ⭐' : '';
-    return `<span class="player-tag" style="background:${COLORS[i]}">${esc(s.name)} → ${s.position+1}번${icon}</span>`;
-  }).join('');
-  statusEl.textContent = `${sels.length} / 5 명 참여`;
+  var sels = state.selections;
+  var html = '';
+  for (var i = 0; i < sels.length; i++) {
+    var s = sels[i];
+    var icon = s.isWinner ? ' ⭐' : '';
+    html += '<span class="player-tag" style="background:' + COLORS[i] + '">' + esc(s.name) + ' → ' + (s.position+1) + '번' + icon + '</span>';
+  }
+  infoBar.innerHTML = html;
+  statusEl.textContent = sels.length + ' / 5 명 참여';
   updatePrizeSection();
 }
 
 function showError(msg) {
   errorEl.textContent = msg;
-  setTimeout(() => { if (errorEl.textContent === msg) errorEl.textContent = ''; }, 3000);
+  setTimeout(function() { if (errorEl.textContent === msg) errorEl.textContent = ''; }, 3000);
 }
 
-function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
-async function refreshState() {
-  try {
-    const res = await fetch('/api/state');
-    state = await res.json();
-    prizeUrl = state.prizeUrl || null;
+function refreshState() {
+  fetch('/api/state')
+  .then(function(res) { return res.json(); })
+  .then(function(data) {
+    state = data;
+    prizeUrl = data.prizeUrl || null;
     resultBanner.style.display = 'none';
     resultBanner.className = 'result-banner';
+    prizeLinkBox.style.display = 'none';
     errorEl.textContent = '';
     draw();
     updateUI();
-  } catch { showError('서버 연결 오류'); }
+  })
+  .catch(function() { showError('서버 연결 오류'); });
 }
 
-async function resetGame() {
+function resetGame() {
   if (state.selections.length > 0 && !confirm('새 게임을 시작하시겠습니까?\n현재 진행 상황이 초기화됩니다.')) return;
-  try {
-    await fetch('/api/reset', { method: 'POST' });
+  fetch('/api/reset', { method: 'POST' })
+  .then(function() {
     prizeUrl = null;
-    await refreshState();
+    prizeLinkBox.style.display = 'none';
+    refreshState();
     nameInput.value = '';
-  } catch { showError('서버 연결 오류'); }
+  })
+  .catch(function() { showError('서버 연결 오류'); });
 }
 
-/* ── init ── */
 refreshState();
 </script>
 </body>
