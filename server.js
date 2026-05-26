@@ -56,7 +56,7 @@ app.get('/api/state', (req, res) => {
     selections: s.selections,
     numLines: s.numLines,
     numRows: s.numRows,
-    hasPrize: !!s.prizeUrl
+    prizeUrl: s.prizeUrl || null
   });
 });
 
