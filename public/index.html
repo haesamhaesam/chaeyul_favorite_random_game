@@ -560,7 +560,7 @@ function showSelectionResult(sel) {
       `<span style="color:${COLORS[i]}">${esc(s.name)}</span> → ${s.position+1}번 → ${s.isWinner ? '<b>🏆 당첨!</b>' : '꽝'}`
     ).join('<br>');
     resultBanner.className = 'result-banner summary';
-    resultBanner.innerHTML = `<div style="margin-bottom:8px;font-size:20px;font-weight:900">🎊 게임 종료! 🎊</div>${lines}${prizeLinkTag()}`;
+    resultBanner.innerHTML = `<div style="margin-bottom:8px;font-size:20px;font-weight:900">🎊 게임 종료! 🎊</div>${lines}${sel.isWinner ? prizeLinkTag() : ''}`;
   }
 }
 
@@ -585,7 +585,7 @@ async function refreshState() {
   try {
     const res = await fetch('/api/state');
     state = await res.json();
-    if (state.hasPrize) prizeUrl = 'set';
+    prizeUrl = state.prizeUrl || null;
     resultBanner.style.display = 'none';
     resultBanner.className = 'result-banner';
     errorEl.textContent = '';
@@ -609,3 +609,4 @@ refreshState();
 </script>
 </body>
 </html>
+
