@@ -197,7 +197,7 @@
 <body>
 <div class="container">
   <h1>사다리타기</h1>
-  <p class="subtitle">이름을 입력하고 위쪽 번호를 클릭하세요!</p>
+  <p class="subtitle">이름을 입력하고 위쪽 번호를 클릭하세요! <span style="color:#ddd;font-size:11px">v3</span></p>
 
   <div class="prize-section" id="prizeSection" style="display:none">
     <span class="prize-label">당첨 링크</span>
@@ -523,6 +523,9 @@ async function selectPosition(name, position) {
     animProgress = 0;
     animStart = performance.now();
 
+    const winPrizeUrl = data.prizeUrl || null;
+    if (winPrizeUrl) prizeUrl = winPrizeUrl;
+
     function tick(now) {
       animProgress = Math.min((now - animStart) / ANIM_MS, 1);
       draw();
@@ -530,8 +533,7 @@ async function selectPosition(name, position) {
       animating = false;
       state.selections = data.selections;
       draw();
-      if (data.prizeUrl) prizeUrl = data.prizeUrl;
-      showSelectionResult(data.selection);
+      showSelectionResult(data.selection, winPrizeUrl);
       updateUI();
       nameInput.value = '';
     }
@@ -541,26 +543,23 @@ async function selectPosition(name, position) {
 
 /* ── ui ── */
 
-function prizeLinkTag() {
-  if (!prizeUrl) return '';
-  return `<br><a href="${esc(prizeUrl)}" target="_blank" class="result-link">🎁 당첨 이미지 보기</a>`;
-}
+function showSelectionResult(sel, url) {
+  const link = (sel.isWinner && url) ? '<br><a href="' + esc(url) + '" target="_blank" class="result-link">🎁 당첨 이미지 보기</a>' : '';
 
-function showSelectionResult(sel) {
   if (sel.isWinner) {
     resultBanner.className = 'result-banner win';
-    resultBanner.innerHTML = `🎉 <b>${esc(sel.name)}</b>님 당첨! 축하합니다! 🎉${prizeLinkTag()}`;
+    resultBanner.innerHTML = '🎉 <b>' + esc(sel.name) + '</b>님 당첨! 축하합니다! 🎉' + link;
   } else {
     resultBanner.className = 'result-banner lose';
-    resultBanner.innerHTML = `😅 <b>${esc(sel.name)}</b>님 꽝! 다음 기회에~`;
+    resultBanner.innerHTML = '😅 <b>' + esc(sel.name) + '</b>님 꽝! 다음 기회에~';
   }
 
   if (state.selections.length >= NUM_LINES) {
     const lines = state.selections.map((s, i) =>
-      `<span style="color:${COLORS[i]}">${esc(s.name)}</span> → ${s.position+1}번 → ${s.isWinner ? '<b>🏆 당첨!</b>' : '꽝'}`
+      '<span style="color:' + COLORS[i] + '">' + esc(s.name) + '</span> → ' + (s.position+1) + '번 → ' + (s.isWinner ? '<b>🏆 당첨!</b>' : '꽝')
     ).join('<br>');
     resultBanner.className = 'result-banner summary';
-    resultBanner.innerHTML = `<div style="margin-bottom:8px;font-size:20px;font-weight:900">🎊 게임 종료! 🎊</div>${lines}${sel.isWinner ? prizeLinkTag() : ''}`;
+    resultBanner.innerHTML = '<div style="margin-bottom:8px;font-size:20px;font-weight:900">🎊 게임 종료! 🎊</div>' + lines + link;
   }
 }
 
@@ -609,4 +608,3 @@ refreshState();
 </script>
 </body>
 </html>
-
