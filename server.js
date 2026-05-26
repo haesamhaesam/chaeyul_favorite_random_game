@@ -86,7 +86,9 @@ app.post('/api/select', (req, res) => {
   const isWinner = endCol === s.winnerIndex;
   const selection = { name: name.trim(), position, endCol, isWinner, path: tracedPath };
   s.selections.push(selection);
-  res.json({ selection, selections: s.selections });
+  const response = { selection, selections: s.selections };
+  if (isWinner && s.prizeImg) response.prizeImg = s.prizeImg;
+  res.json(response);
 });
 
 app.post('/api/reset', (req, res) => {
