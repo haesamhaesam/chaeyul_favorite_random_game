@@ -4,7 +4,7 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(express.json({ limit: '5mb' }));
+app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 let gameState = null;
@@ -25,7 +25,7 @@ function generateLadder() {
     bridges,
     winnerIndex: Math.floor(Math.random() * numLines),
     selections: [],
-    prizeImg: null,
+    prizeUrl: null,
     numLines,
     numRows
   };
@@ -56,22 +56,17 @@ app.get('/api/state', (req, res) => {
     selections: s.selections,
     numLines: s.numLines,
     numRows: s.numRows,
-    hasPrize: !!s.prizeImg
+    hasPrize: !!s.prizeUrl
   });
 });
 
 app.post('/api/prize', (req, res) => {
-  const { image } = req.body;
-  if (!image) return res.status(400).json({ error: '이미지 데이터가 없습니다.' });
+  const { url } = req.body;
+  if (!url) return res.status(400).json({ error: 'URL을 입력해주세요.' });
   const s = getState();
   if (s.selections.length > 0) return res.status(400).json({ error: '이미 게임이 시작되었습니다.' });
-  s.prizeImg = image;
+  s.prizeUrl = url;
   res.json({ success: true });
-});
-
-app.get('/api/prize', (req, res) => {
-  const s = getState();
-  res.json({ image: s.prizeImg });
 });
 
 app.post('/api/select', (req, res) => {
@@ -87,7 +82,7 @@ app.post('/api/select', (req, res) => {
   const selection = { name: name.trim(), position, endCol, isWinner, path: tracedPath };
   s.selections.push(selection);
   const response = { selection, selections: s.selections };
-  if (isWinner && s.prizeImg) response.prizeImg = s.prizeImg;
+  if (isWinner && s.prizeUrl) response.prizeUrl = s.prizeUrl;
   res.json(response);
 });
 
