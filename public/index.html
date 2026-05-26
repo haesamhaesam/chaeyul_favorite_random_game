@@ -558,13 +558,14 @@ async function selectPosition(name, position) {
     animProgress = 0;
     animStart = performance.now();
 
-    function tick(now) {
+    async function tick(now) {
       animProgress = Math.min((now - animStart) / ANIM_MS, 1);
       draw();
       if (animProgress < 1) { requestAnimationFrame(tick); return; }
       animating = false;
       state.selections = data.selections;
       draw();
+      if (data.selection.isWinner && !prizeImgData) await loadPrize();
       showSelectionResult(data.selection);
       updateUI();
       nameInput.value = '';
