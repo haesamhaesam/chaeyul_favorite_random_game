@@ -156,63 +156,42 @@
       flex-wrap: wrap;
     }
     .prize-label { font-weight: 700; color: #555; font-size: 14px; }
-    .prize-btn {
-      padding: 7px 14px;
-      border: 2px dashed #ccc;
+    .prize-input {
+      padding: 7px 12px;
+      border: 2px solid #e0e0e0;
       border-radius: 10px;
-      background: #fafafa;
+      font-size: 13px;
+      font-family: inherit;
+      width: 220px;
+      outline: none;
+    }
+    .prize-input:focus { border-color: #667eea; }
+    .prize-submit {
+      padding: 7px 14px;
+      border: none;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: #fff;
       font-family: inherit;
       font-size: 13px;
-      color: #888;
-      cursor: pointer;
-      transition: all .25s;
-    }
-    .prize-btn:hover { border-color: #667eea; color: #667eea; }
-    .prize-done { font-size: 13px; font-weight: 700; color: #27ae60; }
-
-    .result-img {
-      display: block;
-      max-width: 220px;
-      max-height: 220px;
-      border-radius: 16px;
-      margin: 14px auto 0;
-      box-shadow: 0 6px 20px rgba(0,0,0,0.15);
-      cursor: pointer;
-      transition: transform .2s;
-    }
-    .result-img:hover { transform: scale(1.05); }
-
-    .viewer-overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.85);
-      z-index: 1000;
-      justify-content: center;
-      align-items: center;
-      cursor: pointer;
-      animation: fadeIn .25s ease;
-    }
-    .viewer-overlay.open { display: flex; }
-    .viewer-overlay img {
-      max-width: 90vw;
-      max-height: 90vh;
-      border-radius: 12px;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.5);
-      cursor: default;
-    }
-    .viewer-close {
-      position: fixed;
-      top: 20px;
-      right: 28px;
-      color: #fff;
-      font-size: 36px;
       font-weight: 700;
       cursor: pointer;
-      z-index: 1001;
-      line-height: 1;
     }
-    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .prize-done { font-size: 13px; font-weight: 700; color: #27ae60; }
+
+    .result-link {
+      display: inline-block;
+      margin-top: 12px;
+      padding: 10px 20px;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: #fff;
+      border-radius: 12px;
+      text-decoration: none;
+      font-size: 15px;
+      font-weight: 700;
+      transition: transform .2s;
+    }
+    .result-link:hover { transform: scale(1.05); }
   </style>
 </head>
 <body>
@@ -221,9 +200,9 @@
   <p class="subtitle">이름을 입력하고 위쪽 번호를 클릭하세요!</p>
 
   <div class="prize-section" id="prizeSection" style="display:none">
-    <span class="prize-label">당첨 이미지</span>
-    <button class="prize-btn" id="prizeBtn" onclick="document.getElementById('prizeFile').click()">📷 이미지 선택</button>
-    <input type="file" id="prizeFile" accept="image/*" style="display:none" onchange="handlePrizeUpload(this)">
+    <span class="prize-label">당첨 링크</span>
+    <input type="text" class="prize-input" id="prizeInput" placeholder="이미지 URL 붙여넣기">
+    <button class="prize-submit" id="prizeSubmitBtn" onclick="submitPrizeUrl()">등록</button>
     <span class="prize-done" id="prizeDone" style="display:none">✓ 등록완료</span>
   </div>
 
@@ -247,10 +226,6 @@
   </div>
 </div>
 
-<div class="viewer-overlay" id="viewer" onclick="closeViewer()">
-  <span class="viewer-close">&times;</span>
-  <img id="viewerImg" src="" onclick="event.stopPropagation()">
-</div>
 
 <script>
 const canvas = document.getElementById('ladder');
@@ -279,49 +254,39 @@ let animPath = null;
 let animProgress = 0;
 let animResult = null;
 let animStart = 0;
-let prizeImgData = null;
+let prizeUrl = null;
 
-/* ── prize image ── */
+/* ── prize url ── */
 
-async function handlePrizeUpload(input) {
-  const file = input.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = async function(e) {
-    try {
-      const res = await fetch('/api/prize', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: e.target.result })
-      });
-      const data = await res.json();
-      if (!res.ok) { showError(data.error); return; }
-      prizeImgData = e.target.result;
-      updatePrizeSection();
-    } catch { showError('이미지 업로드 실패'); }
-  };
-  reader.readAsDataURL(file);
-  input.value = '';
-}
-
-async function loadPrize() {
+async function submitPrizeUrl() {
+  const input = document.getElementById('prizeInput');
+  const url = input.value.trim();
+  if (!url) { showError('URL을 입력해주세요!'); return; }
   try {
-    const res = await fetch('/api/prize');
+    const res = await fetch('/api/prize', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url })
+    });
     const data = await res.json();
-    prizeImgData = data.image || null;
-  } catch { prizeImgData = null; }
+    if (!res.ok) { showError(data.error); return; }
+    prizeUrl = url;
+    updatePrizeSection();
+  } catch { showError('등록 실패'); }
 }
 
 function updatePrizeSection() {
   const section = document.getElementById('prizeSection');
-  const btn = document.getElementById('prizeBtn');
+  const input = document.getElementById('prizeInput');
+  const btn = document.getElementById('prizeSubmitBtn');
   const done = document.getElementById('prizeDone');
   if (!state || state.selections.length > 0) {
     section.style.display = 'none';
   } else {
     section.style.display = '';
-    btn.style.display = prizeImgData ? 'none' : '';
-    done.style.display = prizeImgData ? '' : 'none';
+    input.style.display = prizeUrl ? 'none' : '';
+    btn.style.display = prizeUrl ? 'none' : '';
+    done.style.display = prizeUrl ? '' : 'none';
   }
 }
 
@@ -565,7 +530,7 @@ async function selectPosition(name, position) {
       animating = false;
       state.selections = data.selections;
       draw();
-      if (data.prizeImg) prizeImgData = data.prizeImg;
+      if (data.prizeUrl) prizeUrl = data.prizeUrl;
       showSelectionResult(data.selection);
       updateUI();
       nameInput.value = '';
@@ -576,25 +541,15 @@ async function selectPosition(name, position) {
 
 /* ── ui ── */
 
-function prizeImgTag() {
-  if (!prizeImgData) return '';
-  return `<img src="${prizeImgData}" class="result-img" alt="당첨 이미지" onclick="openViewer()">`;
-}
-
-function openViewer() {
-  if (!prizeImgData) return;
-  document.getElementById('viewerImg').src = prizeImgData;
-  document.getElementById('viewer').classList.add('open');
-}
-
-function closeViewer() {
-  document.getElementById('viewer').classList.remove('open');
+function prizeLinkTag() {
+  if (!prizeUrl) return '';
+  return `<br><a href="${esc(prizeUrl)}" target="_blank" class="result-link">🎁 당첨 이미지 보기</a>`;
 }
 
 function showSelectionResult(sel) {
   if (sel.isWinner) {
     resultBanner.className = 'result-banner win';
-    resultBanner.innerHTML = `🎉 <b>${esc(sel.name)}</b>님 당첨! 축하합니다! 🎉${prizeImgTag()}`;
+    resultBanner.innerHTML = `🎉 <b>${esc(sel.name)}</b>님 당첨! 축하합니다! 🎉${prizeLinkTag()}`;
   } else {
     resultBanner.className = 'result-banner lose';
     resultBanner.innerHTML = `😅 <b>${esc(sel.name)}</b>님 꽝! 다음 기회에~`;
@@ -605,7 +560,7 @@ function showSelectionResult(sel) {
       `<span style="color:${COLORS[i]}">${esc(s.name)}</span> → ${s.position+1}번 → ${s.isWinner ? '<b>🏆 당첨!</b>' : '꽝'}`
     ).join('<br>');
     resultBanner.className = 'result-banner summary';
-    resultBanner.innerHTML = `<div style="margin-bottom:8px;font-size:20px;font-weight:900">🎊 게임 종료! 🎊</div>${lines}${prizeImgTag()}`;
+    resultBanner.innerHTML = `<div style="margin-bottom:8px;font-size:20px;font-weight:900">🎊 게임 종료! 🎊</div>${lines}${prizeLinkTag()}`;
   }
 }
 
@@ -630,7 +585,7 @@ async function refreshState() {
   try {
     const res = await fetch('/api/state');
     state = await res.json();
-    await loadPrize();
+    if (state.hasPrize) prizeUrl = 'set';
     resultBanner.style.display = 'none';
     resultBanner.className = 'result-banner';
     errorEl.textContent = '';
@@ -643,7 +598,7 @@ async function resetGame() {
   if (state.selections.length > 0 && !confirm('새 게임을 시작하시겠습니까?\n현재 진행 상황이 초기화됩니다.')) return;
   try {
     await fetch('/api/reset', { method: 'POST' });
-    prizeImgData = null;
+    prizeUrl = null;
     await refreshState();
     nameInput.value = '';
   } catch { showError('서버 연결 오류'); }
